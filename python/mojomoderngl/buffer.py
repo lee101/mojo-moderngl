@@ -2,12 +2,59 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import itertools
 from typing import Any
 
 import numpy as np
 
 from ._lib import addr, empty_bytes, lib
+
+
+_GATHER_PARALLEL_BYTES = 4 * 1024 * 1024
+_GATHER_WORKERS = 8
+_gather_executor: ThreadPoolExecutor | None = None
+
+
+def _gather_chunks(
+    source_addr: int,
+    target_addr: int,
+    chunk_size: int,
+    start: int,
+    step: int,
+    count: int,
+) -> None:
+    total = chunk_size * count
+    if total < _GATHER_PARALLEL_BYTES or count < _GATHER_WORKERS:
+        lib().mmgl_gather_chunks(
+            source_addr, target_addr, chunk_size, start, step, count
+        )
+        return
+
+    global _gather_executor
+    if _gather_executor is None:
+        _gather_executor = ThreadPoolExecutor(max_workers=_GATHER_WORKERS)
+    chunks_per_worker = (count + _GATHER_WORKERS - 1) // _GATHER_WORKERS
+    gather_range = lib().mmgl_gather_chunk_range
+    futures = []
+    for worker in range(_GATHER_WORKERS):
+        begin = worker * chunks_per_worker
+        end = min(begin + chunks_per_worker, count)
+        if begin < end:
+            futures.append(
+                _gather_executor.submit(
+                    gather_range,
+                    source_addr,
+                    target_addr,
+                    chunk_size,
+                    start,
+                    step,
+                    begin,
+                    end,
+                )
+            )
+    for future in futures:
+        future.result()
 
 
 class Error(RuntimeError):
@@ -152,7 +199,7 @@ class Buffer:
         total = chunk_size * count
         result, result_addr = empty_bytes(total)
         if total:
-            lib().mmgl_gather_chunks(
+            _gather_chunks(
                 addr(storage), result_addr, chunk_size, start, step, count
             )
         return result
@@ -179,7 +226,7 @@ class Buffer:
                 )
                 target[write_offset : write_offset + total] = temporary
             else:
-                lib().mmgl_gather_chunks(
+                _gather_chunks(
                     addr(storage),
                     addr(target) + write_offset,
                     chunk_size,

@@ -107,7 +107,7 @@ def test_write_chunks_matches_upstream(gl):
     assert a.read() == b.read()
 
 
-@pytest.mark.parametrize("count", [33, 262145])
+@pytest.mark.parametrize("count", [33, 262143, 262145])
 def test_chunk_roundtrip_simd_tail_and_parallel_threshold(count):
     chunk_size = 16
     start = 5

@@ -545,6 +545,27 @@ def mmgl_gather_chunks(
     )
 
 
+@export("mmgl_gather_chunk_range")
+def mmgl_gather_chunk_range(
+    src: Int,
+    dst: Int,
+    chunk_size: Int,
+    start: Int,
+    step: Int,
+    begin: Int,
+    end: Int,
+) abi("C"):
+    gather_chunk_range(
+        U8Ptr(unsafe_from_address=src),
+        U8Ptr(unsafe_from_address=dst),
+        chunk_size,
+        start,
+        step,
+        begin,
+        end,
+    )
+
+
 @export("mmgl_scatter_chunks")
 def mmgl_scatter_chunks(
     src: Int,

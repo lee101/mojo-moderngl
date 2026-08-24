@@ -22,6 +22,7 @@ _SIGNATURES = {
     "mmgl_copy_bytes": ([I, I, I], None),
     "mmgl_fill_pattern": ([I, I, I, I], None),
     "mmgl_gather_chunks": ([I, I, I, I, I, I], None),
+    "mmgl_gather_chunk_range": ([I, I, I, I, I, I, I], None),
     "mmgl_scatter_chunks": ([I, I, I, I, I, I], None),
     "mmgl_transform_f32": ([I, I, I, I, I, F32, I], None),
     "mmgl_transform_f64": ([I, I, I, I, I, F64, I], None),
