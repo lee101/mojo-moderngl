@@ -1,6 +1,5 @@
 """C ABI for CPU-resident ModernGL buffer and vertex helpers."""
 
-from std.algorithm import sync_parallelize
 from std.math import sqrt
 from std.sys.info import simd_width_of
 
@@ -10,10 +9,6 @@ comptime F64Ptr = UnsafePointer[Float64, AnyOrigin[mut=True]]
 comptime I64Ptr = UnsafePointer[Int64, AnyOrigin[mut=True]]
 comptime W = simd_width_of[DType.float64]()
 comptime BYTE_WIDTH = W * 8
-comptime PARALLEL_BYTES = 4 * 1024 * 1024
-comptime PARALLEL_POINTS = 64 * 1024
-comptime TRANSFER_TASKS = 16
-comptime TRANSFORM_TASKS = 16
 
 
 def copy_bytes(src: U8Ptr, dst: U8Ptr, n: Int):
@@ -85,18 +80,7 @@ def gather_chunks(
     step: Int,
     count: Int,
 ):
-    if chunk_size * count < PARALLEL_BYTES:
-        gather_chunk_range(src, dst, chunk_size, start, step, 0, count)
-        return
-
-    @__copy_capture(src, dst, chunk_size, start, step, count)
-    @parameter
-    def work(task: Int):
-        var begin = task * count // TRANSFER_TASKS
-        var end = (task + 1) * count // TRANSFER_TASKS
-        gather_chunk_range(src, dst, chunk_size, start, step, begin, end)
-
-    sync_parallelize[work](TRANSFER_TASKS)
+    gather_chunk_range(src, dst, chunk_size, start, step, 0, count)
 
 
 def scatter_chunk_range(
@@ -138,19 +122,7 @@ def scatter_chunks(
     step: Int,
     count: Int,
 ):
-    # Overlapping destination chunks must retain deterministic call order.
-    if chunk_size * count < PARALLEL_BYTES or step < chunk_size:
-        scatter_chunk_range(src, dst, chunk_size, start, step, 0, count)
-        return
-
-    @__copy_capture(src, dst, chunk_size, start, step, count)
-    @parameter
-    def work(task: Int):
-        var begin = task * count // TRANSFER_TASKS
-        var end = (task + 1) * count // TRANSFER_TASKS
-        scatter_chunk_range(src, dst, chunk_size, start, step, begin, end)
-
-    sync_parallelize[work](TRANSFER_TASKS)
+    scatter_chunk_range(src, dst, chunk_size, start, step, 0, count)
 
 
 def transform_f32_range(
@@ -256,24 +228,9 @@ def transform_f32(
     default_w: Float32,
     divide: Bool,
 ):
-    if n < PARALLEL_POINTS:
-        transform_f32_range(
-            src, matrix, dst, 0, n, components, default_w, divide
-        )
-        return
-
-    @__copy_capture(
-        src, matrix, dst, n, components, default_w, divide
+    transform_f32_range(
+        src, matrix, dst, 0, n, components, default_w, divide
     )
-    @parameter
-    def work(task: Int):
-        var begin = task * n // TRANSFORM_TASKS
-        var end = (task + 1) * n // TRANSFORM_TASKS
-        transform_f32_range(
-            src, matrix, dst, begin, end, components, default_w, divide
-        )
-
-    sync_parallelize[work](TRANSFORM_TASKS)
 
 
 def transform_f64_range(
@@ -353,24 +310,9 @@ def transform_f64(
     default_w: Float64,
     divide: Bool,
 ):
-    if n < PARALLEL_POINTS:
-        transform_f64_range(
-            src, matrix, dst, 0, n, components, default_w, divide
-        )
-        return
-
-    @__copy_capture(
-        src, matrix, dst, n, components, default_w, divide
+    transform_f64_range(
+        src, matrix, dst, 0, n, components, default_w, divide
     )
-    @parameter
-    def work(task: Int):
-        var begin = task * n // TRANSFORM_TASKS
-        var end = (task + 1) * n // TRANSFORM_TASKS
-        transform_f64_range(
-            src, matrix, dst, begin, end, components, default_w, divide
-        )
-
-    sync_parallelize[work](TRANSFORM_TASKS)
 
 
 def transform_normals_f32(
