@@ -14,7 +14,7 @@ comptime BYTE_WIDTH = W * 8
 def copy_bytes(src: U8Ptr, dst: U8Ptr, n: Int):
     var i = 0
     while i + BYTE_WIDTH <= n:
-        dst.store(i, src.load[width=BYTE_WIDTH](i))
+        dst.store(i, src.unsafe_load[width=BYTE_WIDTH](i))
         i += BYTE_WIDTH
     while i < n:
         dst[i] = src[i]
@@ -54,19 +54,19 @@ def gather_chunk_range(
         var chunk = begin
         while chunk + 2 <= end:
             var source_offset = start + chunk * step
-            var first = src.load[width=16](source_offset)
-            var second = src.load[width=16](source_offset + step)
+            var first = src.unsafe_load[width=16](source_offset)
+            var second = src.unsafe_load[width=16](source_offset + step)
             dst.store(chunk * 16, first.join(second))
             chunk += 2
         while chunk < end:
             var source_offset = start + chunk * step
-            dst.store(chunk * 16, src.load[width=16](source_offset))
+            dst.store(chunk * 16, src.unsafe_load[width=16](source_offset))
             chunk += 1
         return
     if chunk_size == 32:
         for chunk in range(begin, end):
             var source_offset = start + chunk * step
-            dst.store(chunk * 32, src.load[width=32](source_offset))
+            dst.store(chunk * 32, src.unsafe_load[width=32](source_offset))
         return
     for chunk in range(begin, end):
         copy_bytes(src + start + chunk * step, dst + chunk * chunk_size, chunk_size)
@@ -96,19 +96,19 @@ def scatter_chunk_range(
         var chunk = begin
         while chunk + 2 <= end:
             var dest_offset = start + chunk * step
-            var pair = src.load[width=32](chunk * 16)
+            var pair = src.unsafe_load[width=32](chunk * 16)
             dst.store(dest_offset, pair.slice[16]())
             dst.store(dest_offset + step, pair.slice[16, offset=16]())
             chunk += 2
         while chunk < end:
             var dest_offset = start + chunk * step
-            dst.store(dest_offset, src.load[width=16](chunk * 16))
+            dst.store(dest_offset, src.unsafe_load[width=16](chunk * 16))
             chunk += 1
         return
     if chunk_size == 32:
         for chunk in range(begin, end):
             var dest_offset = start + chunk * step
-            dst.store(dest_offset, src.load[width=32](chunk * 32))
+            dst.store(dest_offset, src.unsafe_load[width=32](chunk * 32))
         return
     for chunk in range(begin, end):
         copy_bytes(src + chunk * chunk_size, dst + start + chunk * step, chunk_size)
@@ -152,9 +152,9 @@ def transform_f32_range(
         comptime if W == 4:
             while i + W <= end:
                 var base = i * 3
-                var a = src.load[width=W](base)
-                var b = src.load[width=W](base + W)
-                var c = src.load[width=W](base + 2 * W)
+                var a = src.unsafe_load[width=W](base)
+                var b = src.unsafe_load[width=W](base + W)
+                var c = src.unsafe_load[width=W](base + 2 * W)
                 var x = SIMD[DType.float32, W](a[0], a[3], b[2], c[1])
                 var y = SIMD[DType.float32, W](a[1], b[0], b[3], c[2])
                 var z = SIMD[DType.float32, W](a[2], b[1], c[0], c[3])
